@@ -1,0 +1,204 @@
+<div class="container">
+
+  <div *ngIf="showModeratorForm" class="card mod-form my-4">
+
+    <div class="card-header font-weight-bold d-flex justify-content-center ">Moderation</div>
+    <div class="card-body">
+
+      <form [formGroup]="moderatorForm" (ngSubmit)="moderatorFormSubmit()" class="needs-validation" novalidate>
+
+
+
+        <div class="form-group input-group-lg form-floating mb-3 has-validation">
+          <input class="form-control"
+            id="password" minlength="3" name="password" placeholder="password" required type="password"
+            formControlName="password"
+            [ngClass]="{ 'is-invalid': fmod['password'].touched &&
+            fmod['password'].errors,'is-valid':fmod['password'].touched && !fmod['password'].errors }">
+          <label for="password">Password</label>
+          <div class="invalid-feedback">
+            <div *ngIf="fmod['password'].errors && fmod['password'].errors['required']">Password is required.</div>
+            <div *ngIf="fmod['password'].errors && fmod['password'].errors['incorrect']">Password is incorrect.</div>
+          </div>
+        </div>
+        <div class="form-group d-grid gap-2">
+          <button type="submit" [disabled]="!moderatorForm.valid"
+            class="btn btn-danger btn-lg">Login
+          </button>
+        </div>
+        <div class="form-group input-group-lg my-2">
+          <div *ngIf="showModPasswordLoading" class="d-flex justify-content-center">
+            <div class="spinner-border text-danger" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+          <div *ngIf="isModerator" class="alert alert-success d-flex justify-content-center">
+            You are a moderator now!
+          </div>
+          <div *ngIf="isModerator" class="form-group d-flex justify-content-center">
+            <button (click)="isModerator=false;this.moderatorForm.reset();this.moderatorForm.enable()"
+              class="btn btn-danger btn-md">Logout
+            </button>
+          </div>
+
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+  <div class="jumbotron d-flex flex-column py-3">
+
+    <div class="d-flex justify-content-center mb-3">
+      <img alt="Live" class="liveIcon" src="assets/img/LiveIcon.png" />
+    </div>
+    <h1 class="display-6 d-flex justify-content-center mb-4">Angular Firestore Live Comments</h1>
+
+    <form [formGroup]="commentForm" (ngSubmit)="save()" class="needs-validation" novalidate>
+
+      <div class="form-group input-group-lg form-floating mb-3 has-validation">
+        <input class="form-control" (ngModelChange)="nameChange($event)"
+          id="name" minlength="3" name="name" placeholder="Name" required type="text" formControlName="name"
+          [ngClass]="{ 'is-invalid': f['name'].touched && f['name'].errors,'is-valid':f['name'].touched &&
+          !f['name'].errors }">
+        <label for="floatingInput">Name</label>
+        <div class="invalid-feedback">
+          <div *ngIf="f['name'].errors && f['name'].errors['required']">Name is required.</div>
+          <div *ngIf="f['name'].errors && f['name'].errors['minlength']">Name should be 2 character or more.</div>
+        </div>
+      </div>
+
+      <div class="form-group input-group-lg form-floating mb-3">
+
+        <textarea class="form-control" id="comment" minlength="3"
+          name="comment" formControlName="comment" placeholder="Comment" required style="height: 100px"
+          [ngClass]="{ 'is-invalid': f['comment'].touched && f['comment'].errors,'is-valid':f['comment'].touched &&
+          !f['comment'].errors }"></textarea>
+        <label for="comment">Comment</label>
+        <div class="invalid-feedback">
+          <div *ngIf="f['comment'].errors && f['comment'].errors['required']">Comment is required.</div>
+          <div *ngIf="f['comment'].errors && f['comment'].errors['minlength']">Comment should be 2 character or more.</div>
+        </div>
+      </div>
+      <div class="form-group d-grid gap-2">
+        <button type="submit" [disabled]="!commentForm.valid||isSent"
+          class="btn btn-danger btn-lg">Send
+        </button>
+      </div>
+
+      <div class="form-group input-group-lg">
+        <div *ngIf="isSent" class="alert alert-success d-flex justify-content-center">
+          Your comment was sent successfully !
+        </div>
+      </div>
+    </form>
+
+    <div class="CircleContainer mt-3">
+      <ul class='loading-frame'>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+        <div class='circle'></div>
+      </ul>
+    </div>
+  </div>
+  <!--Comments-->
+  <div class="card card-comments mb-3 wow fadeIn">
+    <div class="card-header font-weight-bold d-flex justify-content-center comment-header">Comments
+      <div *ngIf="commentsCount" class="comment-header-count d-flex align-items-center mx-1">
+        ({{commentsCount}} comments)
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class='d-flex justify-content-start' *ngIf="isModerator">
+        <span>Show hidden comments :</span>
+        <ui-switch [(ngModel)]="showHiddenComments" (change)="countComments()" class="mx-2 row align-items-center" color="red" size="small"></ui-switch>
+      </div>
+      <div class="d-flex justify-content-center pagination-div py-3" *ngIf="commentsCount==0">
+        
+        <div class="spinner-border text-danger" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        
+      </div>
+      <div class="d-flex justify-content-center pagination-div pt-3" *ngIf="commentsCount>0">
+        
+        <pagination-controls (pageChange)="page=$event" class="my-pagination" nextLabel="Next"
+          previousLabel="Previous" ></pagination-controls>
+        
+      </div>
+      <div *ngFor="let comment of comments| paginate
+      : {
+          itemsPerPage: tableSize,
+          currentPage: page
+        };
+  let i = index"
+        class="d-block mt-0 d-flex justify-content-around">
+        <div
+          *ngIf="(comment.show) || (isModerator && !comment.show && showHiddenComments)"
+          class="card card-comments mb-2 mt-2 wow fadeIn w-100">
+
+          <div class="card-header card-comments-header font-weight-bold d-flex justify-content-between">
+            <div class="d-flex justify-content-center">
+              <div class="d-flex align-items-center">
+                <img alt="Generic placeholder image" class="mb-0 me-3 mx-auto comment-icon"
+                  src="assets/img/basic2-004_comment_chat-512red.png">
+              </div>
+              <h5 class="mb-0 ms-3 font-weight-bold align-self-center">{{comment.name}}</h5>
+            </div>
+
+
+            <div class="comment-info d-flex flex-column align-self-center">
+              <p class="time d-flex justify-content-end mb-1">{{comment.timestamp.toDate() | dateAgo }}</p>
+              
+              <p class="city d-flex justify-content-end mb-0">{{comment.city}}, {{comment.country}}</p>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              {{comment.comment}}
+              <div *ngIf="isModerator" class="d-flex flex-column align-content-center">
+                <!-- <ui-switch (valueChange)="onCommentShowChange($event,comment)" [(ngModel)]="!comment.hidden"
+                  class="mb-1 align-self-center" size="small"></ui-switch> -->
+                  <ui-switch  [(ngModel)]="comment.show" (valueChange)="onCommentShowChange($event,comment)"
+                  class="mb-1 align-self-center" size="small" color="red"></ui-switch>
+                <button
+                  (click)="showInfoFor.includes(comment.id)?showInfoFor.splice(showInfoFor.indexOf(comment.id),1):showInfoFor.push(comment.id)"
+                  class="btn btn-sm btn-light" data-placement="top" data-toggle="tooltip"
+                  title="{{comment.id | json}}{{comment | json}}" type="button">
+                  Info
+                </button>
+
+              </div>
+            </div>
+
+            <div [hidden]="!showInfoFor.includes(comment.id)">{{comment.id | json}}
+              <pre>{{comment | json}}</pre>
+            </div>
+          </div>
+
+        
+        </div>
+
+
+
+      </div>
+
+      <div class="d-flex justify-content-center pagination-div pt-3" *ngIf="commentsCount>0">
+        
+        <pagination-controls (pageChange)="page=$event" class="my-pagination" nextLabel="Next"
+          previousLabel="Previous" ></pagination-controls>
+        
+      </div>
+
+    </div>
+
+
+
+  </div>
